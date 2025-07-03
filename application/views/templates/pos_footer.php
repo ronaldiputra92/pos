@@ -30,6 +30,30 @@
 		<script src="<?php echo base_url('assets/') ?>vendors/switchery/dist/switchery.min.js"></script>
 		<script>
 			$(document).ready(function() {
+				// Universal auto-hide alert functionality
+				setTimeout(function() {
+					$('.alert-container .alert').fadeOut('slow', function() {
+						$(this).closest('.alert-container').remove();
+					});
+					
+					// Fallback for any alert elements
+					$('.alert').fadeOut('slow', function() {
+						$(this).remove();
+					});
+					
+					// Also target common Bootstrap alert classes
+					$('.alert-success, .alert-danger, .alert-warning, .alert-info').fadeOut('slow', function() {
+						$(this).remove();
+					});
+				}, 3000);
+
+				// Add close button functionality for alerts
+				$(document).on('click', '.alert .close', function() {
+					$(this).closest('.alert').fadeOut('fast', function() {
+						$(this).remove();
+					});
+				});
+
 				$('.select2').select2();
 				$('.datatable').DataTable();
 				$('.kode-servis').hide();

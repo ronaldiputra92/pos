@@ -200,14 +200,24 @@
                                             <?php
                                             switch ($key) {
                                                 case 'Studio 1':
+                                                    echo '- Cocok untuk foto selfie dan portrait.<br>';
+                                                    echo '- <strong>Harga mulai dari 85rb untuk 2 orang</strong><br>';
+                                                    echo '- Harap menulis di catatan tambahan pemilihan paket atau jumlah orang.';
+                                                    break;
                                                 case 'Studio 2':
-                                                    echo 'Cocok untuk foto selfie dan portrait';
+                                                    echo '- Cocok untuk foto selfie dan portrait.<br>';
+                                                    echo '- <strong>Harga mulai dari 85rb untuk 2 orang</strong><br>';
+                                                    echo '- Harap menulis di catatan tambahan pemilihan paket atau jumlah orang.';
                                                     break;
                                                 case 'Studio 3':
-                                                    echo 'Ruang luas untuk foto grup dan keluarga';
+                                                    echo '- Ruang luas untuk foto grup dan keluarga.<br>';
+                                                    echo '- <strong>Harga mulai dari 70rb untuk 2 orang</strong><br>';
+                                                    echo '- Harap menulis di catatan tambahan pemilihan paket atau jumlah orang.';
                                                     break;
                                                 case 'Studio 4':
-                                                    echo 'Studio dengan konsep elevator yang unik';
+                                                    echo '- Studio dengan konsep elevator yang unik.<br>';
+                                                    echo '- <strong>Harga mulai dari 120rb untuk 4 orang</strong><br>';
+                                                    echo '- Harap menulis di catatan tambahan pemilihan paket atau jumlah orang.';
                                                     break;
                                             }
                                             ?>
@@ -240,7 +250,7 @@
                                 <p class="text-muted">Silakan pilih studio dan tanggal terlebih dahulu</p>
                             </div>
                             <input type="hidden" name="jam_booking" id="jam_booking" required>
-                            
+
                             <!-- Legend -->
                             <div id="slot-legend" style="margin-top: 15px; display: none;">
                                 <small class="text-muted">
@@ -304,7 +314,7 @@
                     alert('Maaf, slot waktu ' + $(this).data('time') + ' sudah terboking. Silakan pilih slot waktu lain.');
                     return false;
                 }
-                
+
                 // Jika slot tersedia, lakukan seleksi
                 $('.time-slot').removeClass('selected');
                 $(this).addClass('selected');
@@ -331,7 +341,7 @@
                                 response.forEach(function(slot) {
                                     var slotClass = 'time-slot';
                                     var slotText = slot.time;
-                                    
+
                                     var tooltip = '';
                                     if (!slot.available) {
                                         slotClass += ' unavailable';
@@ -342,14 +352,14 @@
                                         hasAvailableSlots = true;
                                         tooltip = 'title="Slot tersedia - klik untuk memilih"';
                                     }
-                                    
+
                                     html += '<span class="' + slotClass + '" data-time="' + slot.time + '" data-available="' + slot.available + '" ' + tooltip + '>' + slotText + '</span>';
                                 });
-                                
+
                                 if (!hasAvailableSlots) {
                                     html += '<p class="text-warning" style="margin-top: 15px;"><i class="fa fa-info-circle"></i> Semua slot waktu sudah terboking untuk tanggal ini</p>';
                                 }
-                                
+
                                 // Tampilkan legend
                                 $('#slot-legend').show();
                             } else {

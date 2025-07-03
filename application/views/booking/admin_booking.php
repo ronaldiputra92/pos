@@ -34,7 +34,11 @@
                         <div class="clearfix"></div>
                     </div>
                     <div class="x_content">
-                        <?php echo $this->session->flashdata('message'); ?>
+                        <?php if ($this->session->flashdata('message')): ?>
+                            <div class="alert-container">
+                                <?php echo $this->session->flashdata('message'); ?>
+                            </div>
+                        <?php endif; ?>
 
                         <table id="databooking" width="100%" class="table table-striped table-bordered">
                             <thead>
@@ -768,10 +772,5 @@
             $('#view_telp_customer').closest('tr').hide();
             $('#view_email_customer').closest('tr').hide();
         }
-
-        // Auto-hide alert
-        setTimeout(function() {
-            $('.alert').fadeOut('slow');
-        }, 3000);
     });
 </script>

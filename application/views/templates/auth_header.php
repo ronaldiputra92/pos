@@ -13,6 +13,65 @@
   <link href="<?php echo base_url('assets/') ?>vendors/nprogress/nprogress.css" rel="stylesheet">
   <link href="<?php echo base_url('assets/') ?>vendors/animate.css/animate.min.css" rel="stylesheet">
   <link href="<?php echo base_url('assets/') ?>build/css/custom.min.css" rel="stylesheet">
+  
+  <style>
+    /* Universal Alert Styling */
+    .alert-container {
+      margin-bottom: 15px;
+    }
+
+    .alert-container .alert {
+      position: relative;
+      padding: 15px;
+      margin-bottom: 20px;
+      border: 1px solid transparent;
+      border-radius: 4px;
+    }
+
+    .alert-container .alert-success {
+      color: #3c763d;
+      background-color: #dff0d8;
+      border-color: #d6e9c6;
+    }
+
+    .alert-container .alert-danger {
+      color: #a94442;
+      background-color: #f2dede;
+      border-color: #ebccd1;
+    }
+
+    .alert-container .alert-warning {
+      color: #8a6d3b;
+      background-color: #fcf8e3;
+      border-color: #faebcc;
+    }
+
+    .alert-container .alert-info {
+      color: #31708f;
+      background-color: #d9edf7;
+      border-color: #bce8f1;
+    }
+
+    .alert-container .alert .close {
+      position: absolute;
+      top: 0;
+      right: 0;
+      padding: 15px;
+      cursor: pointer;
+      background: transparent;
+      border: 0;
+      font-size: 21px;
+      font-weight: bold;
+      line-height: 1;
+      color: #000;
+      text-shadow: 0 1px 0 #fff;
+      opacity: .2;
+    }
+
+    .alert-container .alert .close:hover {
+      opacity: .5;
+    }
+  </style>
 </head>
 
 <body class="login">

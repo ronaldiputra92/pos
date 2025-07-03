@@ -5,7 +5,11 @@
 				<section class="mt-5">
 				    
 					<h2 class="text-center" style="padding-top: 25px; padding-bottom: 25px"><img src="<?php echo base_url('assets/img/profil/') . $toko->logo_toko ?>" width="40"> <?php echo $toko->nama_toko ?></h2>
-					<?php echo $this->session->flashdata('message'); ?>
+					<?php if ($this->session->flashdata('message')): ?>
+						<div class="alert-container">
+							<?php echo $this->session->flashdata('message'); ?>
+						</div>
+					<?php endif; ?>
 					
 					<form action="<?php echo base_url('auth') ?>" method="post">
 					    
