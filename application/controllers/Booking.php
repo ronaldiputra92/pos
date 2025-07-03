@@ -30,14 +30,63 @@ class Booking extends CI_Controller
     public function admin()
     {
         // cek_login();
+        $user = infoLogin();
+
+        // Redirect customer ke halaman customer
+        if ($user['username'] == 'customer') {
+            redirect('booking/customer');
+        }
+
         $data = array(
             'title' => 'Manajemen Booking',
-            'user' => infoLogin(),
+            'user' => $user,
             'toko' => $this->db->get('profil_perusahaan')->row(),
             'booking' => $this->Booking_m->getAllBookingWithEmployee(),
             'karyawan' => $this->Karyawan_m->getAllData(),
             'content' => 'booking/admin_booking',
 
+        );
+        $this->load->view('templates/main', $data);
+    }
+
+    // Customer panel untuk melihat booking mereka sendiri
+    public function customer()
+    {
+        // cek_login();
+        $user = infoLogin();
+
+        // Hanya customer yang bisa akses halaman ini
+        if ($user['username'] != 'customer') {
+            redirect('booking/admin');
+        }
+
+        $data = array(
+            'title' => 'Booking Saya',
+            'user' => $user,
+            'toko' => $this->db->get('profil_perusahaan')->row(),
+            'booking' => $this->Booking_m->getBookingByCustomer($user['username']),
+            'content' => 'booking/customer_booking',
+        );
+        $this->load->view('templates/main', $data);
+    }
+
+    // Search booking untuk customer
+    public function search_customer_booking()
+    {
+        $search_term = $this->input->post('search_term');
+
+        if (empty($search_term)) {
+            $this->session->set_flashdata('message', '<div class="alert alert-warning">Harap masukkan kode booking, nama, atau email untuk pencarian.</div>');
+            redirect('booking/customer');
+        }
+
+        $data = array(
+            'title' => 'Hasil Pencarian Booking',
+            'user' => infoLogin(),
+            'toko' => $this->db->get('profil_perusahaan')->row(),
+            'booking' => $this->Booking_m->searchCustomerBooking($search_term),
+            'search_term' => $search_term,
+            'content' => 'booking/customer_booking',
         );
         $this->load->view('templates/main', $data);
     }
@@ -114,6 +163,22 @@ class Booking extends CI_Controller
             'toko' => $this->db->get('profil_perusahaan')->row()
         );
         $this->load->view('booking/success', $data);
+    }
+
+    // Halaman preview booking (tanpa detail kontak)
+    public function preview($booking_id)
+    {
+        $booking = $this->Booking_m->getBookingById($booking_id);
+        if (!$booking) {
+            $this->session->set_flashdata('error', 'Booking tidak ditemukan.');
+            redirect('booking');
+        }
+
+        $data = array(
+            'title' => 'Preview Booking',
+            'booking' => $booking
+        );
+        $this->load->view('booking/preview', $data);
     }
 
     // Print tiket booking
@@ -207,6 +272,46 @@ class Booking extends CI_Controller
         redirect('booking/admin');
     }
 
+    // Update payment status booking (admin/kasir)
+    public function update_payment_status()
+    {
+        // Pastikan request via AJAX/POST
+        if (!$this->input->is_ajax_request()) {
+            show_404();
+            return;
+        }
+
+        $booking_id = $this->input->post('booking_id');
+        $payment_status = $this->input->post('payment_status');
+
+        if (!$booking_id || !$payment_status) {
+            echo json_encode(['success' => false, 'message' => 'Data tidak lengkap']);
+            return;
+        }
+
+        // Validasi payment status
+        $valid_statuses = ['unpaid', 'partial', 'paid'];
+        if (!in_array($payment_status, $valid_statuses)) {
+            echo json_encode(['success' => false, 'message' => 'Status pembayaran tidak valid']);
+            return;
+        }
+
+        try {
+            // Update ke database
+            $this->db->where('kode_booking', $booking_id);
+            $update = $this->db->update('booking_online', ['payment_status' => $payment_status]);
+
+            if ($update) {
+                echo json_encode(['success' => true, 'message' => 'Status pembayaran berhasil diupdate']);
+            } else {
+                echo json_encode(['success' => false, 'message' => 'Gagal update database']);
+            }
+        } catch (Exception $e) {
+            log_message('error', 'Error updating payment status: ' . $e->getMessage());
+            echo json_encode(['success' => false, 'message' => 'Terjadi kesalahan sistem']);
+        }
+    }
+
     // Hapus booking (admin)
     public function delete_booking($booking_id)
     {
@@ -233,8 +338,235 @@ class Booking extends CI_Controller
         $tanggal = $this->input->post('tanggal');
         $studio_id = $this->input->post('studio_id');
 
-        $slots = $this->Booking_m->getAvailableSlots($tanggal, $studio_id);
+        $slots = $this->Booking_m->getAllSlotsWithStatus($tanggal, $studio_id);
         echo json_encode($slots);
+    }
+
+    // Debug method untuk memeriksa data booking
+    public function debug_booking($tanggal = null, $studio_id = null)
+    {
+        if (!$tanggal) $tanggal = '2025-07-04';
+        if (!$studio_id) $studio_id = 'Studio 3';
+
+        echo "<h3>Debug Booking Data</h3>";
+        echo "<p><strong>Tanggal:</strong> $tanggal</p>";
+        echo "<p><strong>Studio:</strong> $studio_id</p>";
+
+        // Cek data booking yang ada
+        $this->db->select('*');
+        $this->db->where('tanggal_booking', $tanggal);
+        $this->db->where('studio_id', $studio_id);
+        $bookings = $this->db->get('booking_online')->result();
+
+        echo "<h4>Data Booking di Database:</h4>";
+        if (count($bookings) > 0) {
+            echo "<table border='1' style='border-collapse: collapse; width: 100%;'>";
+            echo "<tr><th>Kode Booking</th><th>Nama Customer</th><th>Tanggal</th><th>Jam</th><th>Studio</th><th>Status</th><th>Payment Status</th><th>Akan Disilang?</th></tr>";
+            foreach ($bookings as $booking) {
+                $payment_status = isset($booking->payment_status) ? $booking->payment_status : 'unpaid';
+                $will_be_crossed = in_array($payment_status, ['paid', 'partial']) ? 'YA' : 'TIDAK';
+                $row_color = in_array($payment_status, ['paid', 'partial']) ? 'background-color: #ffebee;' : 'background-color: #e8f5e8;';
+                
+                echo "<tr style='$row_color'>";
+                echo "<td>{$booking->kode_booking}</td>";
+                echo "<td>{$booking->nama_customer}</td>";
+                echo "<td>{$booking->tanggal_booking}</td>";
+                echo "<td>{$booking->jam_booking}</td>";
+                echo "<td>{$booking->studio_id}</td>";
+                echo "<td>{$booking->status}</td>";
+                echo "<td><strong>{$payment_status}</strong></td>";
+                echo "<td><strong>{$will_be_crossed}</strong></td>";
+                echo "</tr>";
+            }
+            echo "</table>";
+            echo "<p><small>🟢 Hijau = Slot masih tersedia (belum dibayar) | 🔴 Merah = Slot akan disilang (sudah dibayar/sebagian)</small></p>";
+        } else {
+            echo "<p style='color: red;'>Tidak ada data booking untuk tanggal dan studio tersebut.</p>";
+        }
+
+        // Test method getAllSlotsWithStatus
+        echo "<h4>Result getAllSlotsWithStatus:</h4>";
+        $slots = $this->Booking_m->getAllSlotsWithStatus($tanggal, $studio_id);
+        echo "<pre>";
+        print_r($slots);
+        echo "</pre>";
+
+        // Test query manual
+        echo "<h4>Query Manual Test (Hanya Paid/Partial):</h4>";
+        $this->db->select('jam_booking, payment_status');
+        $this->db->where('tanggal_booking', $tanggal);
+        $this->db->where('studio_id', $studio_id);
+        $this->db->where_in('status', ['pending', 'confirmed']);
+        $this->db->where_in('payment_status', ['paid', 'partial']);
+        $booked_slots = $this->db->get('booking_online')->result_array();
+        
+        echo "<p><strong>Booked slots query result:</strong></p>";
+        echo "<pre>";
+        print_r($booked_slots);
+        echo "</pre>";
+
+        $booked_times = array_column($booked_slots, 'jam_booking');
+        echo "<p><strong>Booked times array:</strong></p>";
+        echo "<pre>";
+        print_r($booked_times);
+        echo "</pre>";
+
+        // Normalize format jam
+        $booked_times_normalized = array();
+        foreach ($booked_times as $time) {
+            if (strlen($time) > 5) {
+                $booked_times_normalized[] = substr($time, 0, 5);
+            } else {
+                $booked_times_normalized[] = $time;
+            }
+        }
+
+        echo "<p><strong>Normalized booked times array:</strong></p>";
+        echo "<pre>";
+        print_r($booked_times_normalized);
+        echo "</pre>";
+
+        // Cek format jam yang tersimpan
+        echo "<h4>Format Jam Analysis:</h4>";
+        if (count($booked_times) > 0) {
+            foreach ($booked_times as $time) {
+                echo "<p>Jam tersimpan: '$time' (length: " . strlen($time) . ")</p>";
+                echo "<p>Comparison dengan '09:00': " . ($time === '09:00' ? 'MATCH' : 'NO MATCH') . "</p>";
+                echo "<p>Comparison dengan '09:00:00': " . ($time === '09:00:00' ? 'MATCH' : 'NO MATCH') . "</p>";
+                echo "<hr>";
+            }
+        }
+
+        // Test in_array dengan berbagai format
+        echo "<h4>in_array Test (Original):</h4>";
+        $test_times = ['09:00', '09:00:00', '9:00', '9:00:00'];
+        foreach ($test_times as $test_time) {
+            $result = in_array($test_time, $booked_times);
+            echo "<p>in_array('$test_time', booked_times): " . ($result ? 'TRUE' : 'FALSE') . "</p>";
+        }
+
+        echo "<h4>in_array Test (Normalized):</h4>";
+        foreach ($test_times as $test_time) {
+            $result = in_array($test_time, $booked_times_normalized);
+            echo "<p>in_array('$test_time', normalized_booked_times): " . ($result ? 'TRUE' : 'FALSE') . "</p>";
+        }
+    }
+
+    // Test AJAX call untuk get_available_slots
+    public function test_ajax_slots()
+    {
+        echo "<h3>Test AJAX get_available_slots</h3>";
+        
+        // Simulate POST data
+        $_POST['tanggal'] = '2025-07-04';
+        $_POST['studio_id'] = 'Studio 3';
+        
+        echo "<p>Simulating AJAX call with:</p>";
+        echo "<p>tanggal: " . $_POST['tanggal'] . "</p>";
+        echo "<p>studio_id: " . $_POST['studio_id'] . "</p>";
+        
+        echo "<h4>Response:</h4>";
+        $this->get_available_slots();
+    }
+
+    // Test method untuk update payment status
+    public function test_payment_status($booking_id = null, $status = null)
+    {
+        if (!$booking_id || !$status) {
+            echo "<h3>Test Payment Status Update</h3>";
+            echo "<p>Usage: /booking/test_payment_status/[booking_id]/[status]</p>";
+            echo "<p>Status options: unpaid, partial, paid</p>";
+            echo "<p>Example: /booking/test_payment_status/BK-000001/paid</p>";
+            return;
+        }
+
+        $valid_statuses = ['unpaid', 'partial', 'paid'];
+        if (!in_array($status, $valid_statuses)) {
+            echo "<p style='color: red;'>Invalid status. Use: unpaid, partial, or paid</p>";
+            return;
+        }
+
+        // Update payment status
+        $this->db->where('kode_booking', $booking_id);
+        $update = $this->db->update('booking_online', ['payment_status' => $status]);
+
+        if ($update) {
+            echo "<h3>Payment Status Updated</h3>";
+            echo "<p>Booking ID: <strong>$booking_id</strong></p>";
+            echo "<p>New Payment Status: <strong>$status</strong></p>";
+            echo "<p style='color: green;'>✅ Update successful!</p>";
+            
+            // Show current booking data
+            $booking = $this->db->get_where('booking_online', ['kode_booking' => $booking_id])->row();
+            if ($booking) {
+                echo "<h4>Current Booking Data:</h4>";
+                echo "<table border='1' style='border-collapse: collapse;'>";
+                echo "<tr><th>Field</th><th>Value</th></tr>";
+                echo "<tr><td>Kode Booking</td><td>{$booking->kode_booking}</td></tr>";
+                echo "<tr><td>Nama Customer</td><td>{$booking->nama_customer}</td></tr>";
+                echo "<tr><td>Tanggal</td><td>{$booking->tanggal_booking}</td></tr>";
+                echo "<tr><td>Jam</td><td>{$booking->jam_booking}</td></tr>";
+                echo "<tr><td>Studio</td><td>{$booking->studio_id}</td></tr>";
+                echo "<tr><td>Status</td><td>{$booking->status}</td></tr>";
+                echo "<tr><td><strong>Payment Status</strong></td><td><strong>{$booking->payment_status}</strong></td></tr>";
+                echo "</table>";
+            }
+        } else {
+            echo "<p style='color: red;'>❌ Update failed!</p>";
+        }
+    }
+
+    // Debug method untuk print ticket
+    public function debug_print_ticket($booking_id)
+    {
+        $booking = $this->Booking_m->getBookingById($booking_id);
+        
+        echo "<h3>Debug Print Ticket Data</h3>";
+        echo "<p><strong>Booking ID:</strong> $booking_id</p>";
+        
+        if (!$booking) {
+            echo "<p style='color: red;'>❌ Booking tidak ditemukan!</p>";
+            return;
+        }
+        
+        echo "<h4>Data Booking:</h4>";
+        echo "<table border='1' style='border-collapse: collapse; width: 100%;'>";
+        echo "<tr><th>Field</th><th>Value</th><th>Type</th></tr>";
+        
+        foreach ($booking as $key => $value) {
+            $type = gettype($value);
+            $display_value = $value === null ? 'NULL' : $value;
+            echo "<tr>";
+            echo "<td><strong>$key</strong></td>";
+            echo "<td>$display_value</td>";
+            echo "<td><em>$type</em></td>";
+            echo "</tr>";
+        }
+        echo "</table>";
+        
+        echo "<h4>Payment Status Analysis:</h4>";
+        $payment_status = isset($booking->payment_status) ? $booking->payment_status : 'unpaid';
+        echo "<p><strong>payment_status field exists:</strong> " . (isset($booking->payment_status) ? 'YES' : 'NO') . "</p>";
+        echo "<p><strong>payment_status value:</strong> '$payment_status'</p>";
+        echo "<p><strong>Detected status:</strong> ";
+        
+        if ($payment_status == 'paid') {
+            echo "<span style='color: green; font-weight: bold;'>✓ LUNAS</span>";
+        } elseif ($payment_status == 'partial') {
+            echo "<span style='color: orange; font-weight: bold;'>◐ SEBAGIAN</span>";
+        } else {
+            echo "<span style='color: red; font-weight: bold;'>✗ BELUM DIBAYAR</span>";
+        }
+        echo "</p>";
+        
+        echo "<h4>Quick Actions:</h4>";
+        echo "<p>";
+        echo "<a href='" . base_url('booking/test_payment_status/' . $booking_id . '/unpaid') . "' style='margin-right: 10px;'>Set to Unpaid</a> | ";
+        echo "<a href='" . base_url('booking/test_payment_status/' . $booking_id . '/partial') . "' style='margin-right: 10px;'>Set to Partial</a> | ";
+        echo "<a href='" . base_url('booking/test_payment_status/' . $booking_id . '/paid') . "' style='margin-right: 10px;'>Set to Paid</a>";
+        echo "</p>";
+        
+        echo "<p><a href='" . base_url('booking/print_ticket/' . $booking_id) . "' target='_blank' style='background: #007bff; color: white; padding: 10px 15px; text-decoration: none; border-radius: 5px;'>🖨️ View Print Ticket</a></p>";
     }
 
     // Load data untuk DataTables (sama seperti halaman karyawan)
@@ -242,7 +574,7 @@ class Booking extends CI_Controller
     {
         $data = $this->Booking_m->getAllBookingWithEmployee();
         $result = array();
-        
+
         foreach ($data as $row) {
             $result[] = array(
                 'kode_booking' => $row->kode_booking,
@@ -253,17 +585,16 @@ class Booking extends CI_Controller
                 'studio_id' => $row->studio_id,
                 'tanggal_booking' => $row->tanggal_booking,
                 'jam_booking' => $row->jam_booking,
-                'durasi' => $row->durasi,
                 'status' => $row->status,
                 'catatan' => $row->catatan,
                 'created_at' => $row->created_at
             );
         }
-        
+
         $output = array(
             "aaData" => $result
         );
-        
+
         echo json_encode($output);
     }
 
@@ -314,6 +645,11 @@ class Booking extends CI_Controller
             if ($query->num_rows() == 0) {
                 // Create table if it doesn't exist
                 $this->createBookingTable();
+            } else {
+                // Table exists, check if payment_status column exists
+                $this->addPaymentStatusColumn();
+                // Remove duration column if exists
+                $this->removeDurationColumn();
             }
         } catch (Exception $e) {
             log_message('error', 'Error checking booking table: ' . $e->getMessage());
@@ -332,9 +668,9 @@ class Booking extends CI_Controller
             `studio_id` varchar(50) NOT NULL,
             `tanggal_booking` date NOT NULL,
             `jam_booking` time NOT NULL,
-            `durasi` int(11) DEFAULT 60,
             `catatan` text,
             `status` enum('pending','confirmed','completed','cancelled') DEFAULT 'pending',
+            `payment_status` enum('unpaid','partial','paid') DEFAULT 'unpaid',
             `created_at` datetime DEFAULT CURRENT_TIMESTAMP,
             `updated_at` datetime DEFAULT NULL ON UPDATE CURRENT_TIMESTAMP,
             PRIMARY KEY (`id_booking`),
@@ -346,8 +682,54 @@ class Booking extends CI_Controller
 
         if ($this->db->query($sql)) {
             log_message('info', 'Booking table created successfully');
+
+            // Tambahkan kolom payment_status jika tabel sudah ada sebelumnya
+            $this->addPaymentStatusColumn();
+            // Hapus kolom durasi jika ada
+            $this->removeDurationColumn();
         } else {
             log_message('error', 'Failed to create booking table: ' . $this->db->error()['message']);
+        }
+    }
+
+    private function addPaymentStatusColumn()
+    {
+        try {
+            // Cek apakah kolom payment_status sudah ada
+            $query = $this->db->query("SHOW COLUMNS FROM booking_online LIKE 'payment_status'");
+            if ($query->num_rows() == 0) {
+                // Tambahkan kolom payment_status jika belum ada
+                $sql = "ALTER TABLE booking_online ADD COLUMN payment_status ENUM('unpaid','partial','paid') DEFAULT 'unpaid' AFTER status";
+                $this->db->query($sql);
+                log_message('info', 'Payment status column added successfully');
+            }
+
+            // Cek apakah kolom created_by sudah ada
+            $query = $this->db->query("SHOW COLUMNS FROM booking_online LIKE 'created_by'");
+            if ($query->num_rows() == 0) {
+                // Tambahkan kolom created_by untuk tracking user yang membuat booking
+                $sql = "ALTER TABLE booking_online ADD COLUMN created_by VARCHAR(50) NULL AFTER payment_status";
+                $this->db->query($sql);
+                log_message('info', 'Created by column added successfully');
+            }
+        } catch (Exception $e) {
+            log_message('error', 'Error adding columns: ' . $e->getMessage());
+        }
+    }
+
+    private function removeDurationColumn()
+    {
+        try {
+            // Cek apakah kolom durasi masih ada
+            $query = $this->db->query("SHOW COLUMNS FROM booking_online LIKE 'durasi'");
+            if ($query->num_rows() > 0) {
+                // Hapus kolom durasi jika masih ada
+                $sql = "ALTER TABLE booking_online DROP COLUMN durasi";
+                $this->db->query($sql);
+                log_message('info', 'Duration column removed successfully');
+            }
+        } catch (Exception $e) {
+            log_message('error', 'Error removing duration column: ' . $e->getMessage());
         }
     }
 
@@ -359,5 +741,145 @@ class Booking extends CI_Controller
             'Studio 3' => 'Studio 3 (Wide Photobox)',
             'Studio 4' => 'Studio 4 (Photo Elevator)'
         );
+    }
+
+    // Generate report booking
+    public function generate_report()
+    {
+        // cek_login();
+
+        $start_date = $this->input->get('start_date');
+        $end_date = $this->input->get('end_date');
+        $status_filter = $this->input->get('status_filter');
+        $payment_filter = $this->input->get('payment_filter');
+        $studio_filter = $this->input->get('studio_filter');
+        $format = $this->input->get('format');
+
+        // Validasi input
+        if (!$start_date || !$end_date) {
+            show_error('Parameter tanggal tidak lengkap');
+            return;
+        }
+
+        // Get filtered data
+        $data = $this->Booking_m->getReportData($start_date, $end_date, $status_filter, $payment_filter, $studio_filter);
+
+        $report_data = array(
+            'title' => 'Report Booking',
+            'start_date' => $start_date,
+            'end_date' => $end_date,
+            'status_filter' => $status_filter,
+            'payment_filter' => $payment_filter,
+            'studio_filter' => $studio_filter,
+            'booking_data' => $data,
+            'total_records' => count($data),
+            'toko' => $this->db->get('profil_perusahaan')->row()
+        );
+
+        switch ($format) {
+            case 'excel':
+                $this->generateExcelReport($report_data);
+                break;
+            case 'pdf':
+                $this->generatePdfReport($report_data);
+                break;
+            case 'html':
+            default:
+                $this->load->view('booking/report_html', $report_data);
+                break;
+        }
+    }
+
+    private function generateExcelReport($data)
+    {
+        // Load PhpSpreadsheet library (jika ada) atau gunakan simple CSV
+        $filename = 'booking_report_' . date('Y-m-d_H-i-s') . '.csv';
+
+        header('Content-Type: text/csv');
+        header('Content-Disposition: attachment; filename="' . $filename . '"');
+
+        $output = fopen('php://output', 'w');
+
+        // Header CSV
+        fputcsv($output, array(
+            'Kode Booking',
+            'Nama Customer',
+            'Telepon',
+            'Email',
+            'Karyawan',
+            'Studio',
+            'Tanggal Booking',
+            'Jam Booking',
+            'Status',
+            'Status Pembayaran',
+            'Catatan',
+            'Tanggal Dibuat'
+        ));
+
+        // Data rows
+        foreach ($data['booking_data'] as $row) {
+            $studio_name = $this->getStudioDisplayName($row->studio_id);
+            $payment_status = $this->getPaymentStatusText($row->payment_status ?? 'unpaid');
+
+            fputcsv($output, array(
+                $row->kode_booking,
+                $row->nama_customer,
+                $row->telp_customer,
+                $row->email_customer,
+                $row->nama_karyawan ?? '-',
+                $studio_name,
+                date('d-m-Y', strtotime($row->tanggal_booking)),
+                $row->jam_booking,
+                ucfirst($row->status),
+                $payment_status,
+                $row->catatan ?? '-',
+                date('d-m-Y H:i', strtotime($row->created_at))
+            ));
+        }
+
+        fclose($output);
+    }
+
+    private function generatePdfReport($data)
+    {
+        // Load TCPDF library (jika ada) atau gunakan HTML to PDF sederhana
+        $html = $this->load->view('booking/report_pdf', $data, true);
+
+        // Simple HTML to PDF using browser print
+        $filename = 'booking_report_' . date('Y-m-d_H-i-s') . '.html';
+
+        header('Content-Type: text/html');
+        header('Content-Disposition: attachment; filename="' . $filename . '"');
+
+        echo $html;
+    }
+
+    private function getStudioDisplayName($studio_id)
+    {
+        switch ($studio_id) {
+            case 'Studio 1':
+                return 'Studio 1 (Self Photo)';
+            case 'Studio 2':
+                return 'Studio 2 (Self Photo)';
+            case 'Studio 3':
+                return 'Studio 3 (Wide Photobox)';
+            case 'Studio 4':
+                return 'Studio 4 (Photo Elevator)';
+            default:
+                return $studio_id;
+        }
+    }
+
+    private function getPaymentStatusText($status)
+    {
+        switch ($status) {
+            case 'paid':
+                return 'Lunas';
+            case 'partial':
+                return 'Sebagian';
+            case 'unpaid':
+            default:
+                return 'Belum Bayar';
+        }
     }
 }

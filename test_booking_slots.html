@@ -1,0 +1,180 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test Booking Slots</title>
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; }
+        .time-slot { 
+            display: inline-block; 
+            margin: 5px; 
+            padding: 8px 15px; 
+            border: 1px solid #ddd; 
+            border-radius: 5px; 
+            cursor: pointer; 
+            transition: all 0.3s; 
+        }
+        .time-slot.available { 
+            background-color: #f8f9fa; 
+            border-color: #28a745; 
+        }
+        .time-slot.available:hover { 
+            background-color: #28a745; 
+            color: white; 
+        }
+        .time-slot.unavailable { 
+            background-color: #dc3545; 
+            color: white; 
+            cursor: not-allowed; 
+            position: relative; 
+        }
+        .time-slot.unavailable::before {
+            content: '✗';
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            font-size: 16px;
+            font-weight: bold;
+            color: white;
+            z-index: 1;
+        }
+        .time-slot.unavailable:hover {
+            background-color: #c82333;
+            color: white;
+            transform: scale(1.02);
+        }
+        .test-section { 
+            margin: 20px 0; 
+            padding: 15px; 
+            border: 1px solid #ddd; 
+            border-radius: 5px; 
+        }
+        .debug-info { 
+            background-color: #f8f9fa; 
+            padding: 10px; 
+            border-radius: 5px; 
+            margin: 10px 0; 
+        }
+    </style>
+</head>
+<body>
+    <h1>Test Booking Slots System</h1>
+    
+    <div class="test-section">
+        <h3>Test Parameters</h3>
+        <label>Tanggal: <input type="date" id="test-date" value="2025-07-04"></label><br><br>
+        <label>Studio: 
+            <select id="test-studio">
+                <option value="Studio 1">Studio 1</option>
+                <option value="Studio 2">Studio 2</option>
+                <option value="Studio 3" selected>Studio 3</option>
+                <option value="Studio 4">Studio 4</option>
+            </select>
+        </label><br><br>
+        <button onclick="testSlots()">Test Get Slots</button>
+        <button onclick="debugBooking()">Debug Booking Data</button>
+        
+        <div style="margin-top: 15px; padding: 10px; background-color: #f0f8ff; border-radius: 5px;">
+            <h4>Logika Tanda Silang:</h4>
+            <p>✅ <strong>Slot Tersedia:</strong> Booking belum dibayar (payment_status = 'unpaid')</p>
+            <p>❌ <strong>Slot Disilang:</strong> Booking sudah dibayar lunas atau sebagian (payment_status = 'paid' atau 'partial')</p>
+        </div>
+    </div>
+
+    <div class="test-section">
+        <h3>Slot Results</h3>
+        <div id="slot-results">
+            <p>Click "Test Get Slots" to load slot data</p>
+        </div>
+    </div>
+
+    <div class="test-section">
+        <h3>Debug Information</h3>
+        <div id="debug-info" class="debug-info">
+            <p>Debug information will appear here</p>
+        </div>
+    </div>
+
+    <script>
+        var base_url = "http://localhost/kasir/";
+
+        function testSlots() {
+            var tanggal = $('#test-date').val();
+            var studio = $('#test-studio').val();
+            
+            $('#debug-info').html('<p>Loading slots for ' + studio + ' on ' + tanggal + '...</p>');
+            
+            $.ajax({
+                url: base_url + 'booking/get_available_slots',
+                type: 'POST',
+                data: {
+                    tanggal: tanggal,
+                    studio_id: studio
+                },
+                dataType: 'json',
+                success: function(response) {
+                    $('#debug-info').html('<p>AJAX Success! Response received:</p><pre>' + JSON.stringify(response, null, 2) + '</pre>');
+                    
+                    var html = '';
+                    if (response.length > 0) {
+                        var hasAvailableSlots = false;
+                        response.forEach(function(slot) {
+                            var slotClass = 'time-slot';
+                            var tooltip = '';
+                            
+                            if (!slot.available) {
+                                slotClass += ' unavailable';
+                                tooltip = 'title="Slot sudah terboking - tidak tersedia"';
+                            } else {
+                                slotClass += ' available';
+                                hasAvailableSlots = true;
+                                tooltip = 'title="Slot tersedia - klik untuk memilih"';
+                            }
+                            
+                            html += '<span class="' + slotClass + '" data-time="' + slot.time + '" data-available="' + slot.available + '" ' + tooltip + '>' + slot.time + '</span>';
+                        });
+                        
+                        if (!hasAvailableSlots) {
+                            html += '<p style="color: orange; margin-top: 15px;">⚠️ Semua slot waktu sudah terboking untuk tanggal ini</p>';
+                        }
+                    } else {
+                        html = '<p style="color: red;">Tidak ada slot waktu yang tersedia untuk tanggal ini</p>';
+                    }
+                    $('#slot-results').html(html);
+                },
+                error: function(xhr, status, error) {
+                    $('#debug-info').html('<p style="color: red;">AJAX Error: ' + error + '</p><p>Status: ' + status + '</p><p>Response: ' + xhr.responseText + '</p>');
+                    $('#slot-results').html('<p style="color: red;">Terjadi kesalahan saat memuat slot waktu</p>');
+                }
+            });
+        }
+
+        function debugBooking() {
+            var tanggal = $('#test-date').val();
+            var studio = $('#test-studio').val();
+            
+            window.open(base_url + 'booking/debug_booking/' + tanggal + '/' + encodeURIComponent(studio), '_blank');
+        }
+
+        // Click handler untuk slot
+        $(document).on('click', '.time-slot', function() {
+            if ($(this).data('available') === false || $(this).hasClass('unavailable')) {
+                alert('Maaf, slot waktu ' + $(this).data('time') + ' sudah terboking. Silakan pilih slot waktu lain.');
+                return false;
+            }
+            
+            $('.time-slot').removeClass('selected');
+            $(this).addClass('selected');
+            alert('Slot ' + $(this).data('time') + ' dipilih!');
+        });
+
+        // Auto load on page ready
+        $(document).ready(function() {
+            testSlots();
+        });
+    </script>
+</body>
+</html>

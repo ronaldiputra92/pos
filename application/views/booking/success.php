@@ -125,14 +125,23 @@
                     <span class="detail-label">Jam:</span>
                     <span class="detail-value"><?php echo $booking->jam_booking ?></span>
                 </div>
-                <div class="detail-row">
-                    <span class="detail-label">Durasi:</span>
-                    <span class="detail-value"><?php echo $booking->durasi ?> menit</span>
-                </div>
-                <div class="detail-row">
+                <!-- <div class="detail-row">
                     <span class="detail-label">Status:</span>
                     <span class="detail-value">
                         <span class="label label-warning">Pending</span>
+                    </span>
+                </div> -->
+                <!-- pembayaran -->
+                <div class="detail-row">
+                    <span class="detail-label">Pembayaran:</span>
+                    <span class="detail-value">
+                        <?php if ($booking->status == 'lunas'): ?>
+                            <span class="label label-success">Lunas</span>
+                        <?php elseif ($booking->status == 'sebagian'): ?>
+                            <span class="label label-warning">Sebagian</span>
+                        <?php else: ?>
+                            <span class="label label-danger">Belum dibayar</span>
+                        <?php endif; ?>
                     </span>
                 </div>
                 <?php if ($booking->catatan): ?>
@@ -148,18 +157,31 @@
                 <strong>Informasi Penting:</strong><br>
                 - Harap datang 15 menit sebelum jadwal booking Anda<br>
                 - Simpan kode booking ini untuk referensi<br>
-                - Status booking akan dikonfirmasi oleh admin
+                - Silahkan screenshot dan konfirmasi ke admin untuk pembayaran
             </div>
 
             <div class="text-center">
-                <a href="<?php echo base_url('booking/print_ticket/' . $booking->kode_booking) ?>" class="btn btn-success btn-lg" target="_blank">
+                <a href="<?php echo base_url('booking/print_ticket/' . $booking->kode_booking) ?>" class="btn btn-success btn-md" target="_blank">
                     <i class="fa fa-print"></i> Print Tiket
                 </a>
-                <a href="<?php echo base_url('booking') ?>" class="btn btn-primary btn-lg">
+                <a href="<?php echo base_url('booking') ?>" class="btn btn-primary btn-md">
                     <i class="fa fa-plus"></i> Booking Lagi
                 </a>
-                <a href="<?php echo base_url('booking/admin') ?>" class="btn btn-default btn-lg">
+                <!-- <a href="<?php echo base_url('booking/preview/' . $booking->kode_booking) ?>" class="btn btn-default btn-md">
                     <i class="fa fa-home"></i> Beranda
+                </a> -->
+                <!-- beranda -->
+                <?php
+                $username = $this->session->userdata('username');
+                if ($username == 'admin' || $username == 'kasir') :
+                ?>
+                    <a href="<?php echo base_url('booking/admin') ?>" class="btn btn-default btn-md">
+                        <i class="fa fa-cog"></i>Manajemen Booking
+                    </a>
+                <?php endif; ?>
+                <!-- tambahkan untuk akses ke whatsapp -->
+                <a href="https://api.whatsapp.com/send?phone=6285174140134&text=Halo%20Admin,%20saya%20ingin%20menanyakan%20tentang%20booking%20saya." class="btn btn-success btn-md" target="_blank">
+                    <i class="fa fa-whatsapp"></i> Admin
                 </a>
             </div>
         </div>

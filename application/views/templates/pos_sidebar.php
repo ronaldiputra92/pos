@@ -28,17 +28,25 @@
                       <li><a href="<?php echo base_url('booking/admin') ?>">Manajemen Booking</a></li>
                     </ul>
                   </li>
-                  <li><a><i class="fa fa-shopping-cart"></i> Transaksi <span class="fa fa-chevron-down"></span></a>
-                    <ul class="nav child_menu">
-                      <li><a href="<?php echo base_url('penjualan') ?>">Entry Penjualan</a></li>
-                      <li><a href="<?php echo base_url('dpenjualan') ?>">Daftar Penjualan</a></li>
+                  <?php
+                  // Memeriksa apakah username di session adalah 'admin' atau 'kasir'
+                  if ($this->session->userdata('username') == 'admin' || $this->session->userdata('username') == 'kasir'):
+                  ?>
+                    <li>
+                      <a><i class="fa fa-shopping-cart"></i> Transaksi <span class="fa fa-chevron-down"></span></a>
+                      <ul class="nav child_menu">
+                        <li><a href="<?php echo base_url('penjualan') ?>">Entry Penjualan</a></li>
+                        <li><a href="<?php echo base_url('dpenjualan') ?>">Daftar Penjualan</a></li>
+                        <li><a href="<?php echo base_url('pembelian') ?>">Entry Pembelian</a></li>
+                        <li><a href="<?php echo base_url('dpembelian') ?>">Daftar Pembelian</a></li>
+                        <li><a href="<?php echo base_url('hutang') ?>">Hutang</a></li>
+                        <li><a href="<?php echo base_url('piutang') ?>">Piutang</a></li>
+                      </ul>
+                    </li>
+                  <?php
+                  endif;
+                  ?>
 
-                      <li><a href="<?php echo base_url('pembelian') ?>">Entry Pembelian</a></li>
-                      <li><a href="<?php echo base_url('dpembelian') ?>">Daftar Pembelian</a></li>
-                      <li><a href="<?php echo base_url('hutang') ?>">Hutang</a></li>
-                      <li><a href="<?php echo base_url('piutang') ?>">Piutang</a></li>
-                    </ul>
-                  </li>
                   <?php if ($user['tipe'] == "Administrator") { ?>
                     <li><a><i class="fa fa-desktop"></i> Master Data <span class="fa fa-chevron-down"></span></a>
                       <ul class="nav child_menu">

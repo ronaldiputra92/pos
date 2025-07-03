@@ -156,7 +156,7 @@
     <div class="ticket">
         <div class="ticket-header">
             <h1>Tiket Booking</h1>
-            <p>Dena Studio Photo</p>
+            <p>Dema Studio Photo</p>
         </div>
 
         <div class="booking-code">
@@ -213,17 +213,20 @@
                 <span class="detail-value"><?php echo $booking->jam_booking ?></span>
             </div>
             <div class="detail-row">
-                <span class="detail-label">Durasi:</span>
-                <span class="detail-value"><?php echo $booking->durasi ?> menit</span>
-            </div>
-            <div class="detail-row">
-                <span class="detail-label">Status:</span>
+                <span class="detail-label" style="font-weight: bold;">Status Pembayaran:</span>
                 <span class="detail-value">
-                    <span class="status-badge status-<?php echo $booking->status ?>">
-                        <?php echo ucfirst($booking->status) ?>
-                    </span>
+                    <?php
+                    $payment_status = isset($booking->payment_status) ? $booking->payment_status : 'unpaid';
+                    if ($payment_status == 'paid'): ?>
+                        <span class="badge" style="background-color: #28a745; color: white; padding: 4px 8px; border-radius: 3px; font-weight: bold;">✓ Lunas</span>
+                    <?php elseif ($payment_status == 'partial'): ?>
+                        <span class="badge" style="background-color: #ffc107; color: black; padding: 4px 8px; border-radius: 3px; font-weight: bold;">◐ Sebagian</span>
+                    <?php else: ?>
+                        <span class="badge" style="background-color: #dc3545; color: white; padding: 4px 8px; border-radius: 3px; font-weight: bold;">✗ Belum Dibayar</span>
+                    <?php endif; ?>
                 </span>
             </div>
+
             <?php if ($booking->catatan): ?>
                 <div class="detail-row">
                     <span class="detail-label">Catatan:</span>
@@ -249,6 +252,26 @@
             <?php if ($booking->nama_karyawan): ?>
                 <p>• Karyawan yang bertugas: <strong><?php echo $booking->nama_karyawan ?></strong></p>
             <?php endif; ?>
+
+            <?php
+            $payment_status = isset($booking->payment_status) ? $booking->payment_status : 'unpaid';
+            if ($payment_status == 'unpaid'): ?>
+                <div style="background-color: #fff3cd; padding: 10px; border-radius: 5px; margin: 10px 0; border-left: 4px solid #ffc107;">
+                    <p style="margin: 0; color: #856404;"><strong>⚠️ PEMBAYARAN BELUM LUNAS</strong></p>
+                    <p style="margin: 5px 0 0 0; color: #856404; font-size: 11px;">Harap lakukan pembayaran sebelum sesi foto dimulai</p>
+                </div>
+            <?php elseif ($payment_status == 'partial'): ?>
+                <div style="background-color: #fff3cd; padding: 10px; border-radius: 5px; margin: 10px 0; border-left: 4px solid #ffc107;">
+                    <p style="margin: 0; color: #856404;"><strong>◐ PEMBAYARAN SEBAGIAN</strong></p>
+                    <p style="margin: 5px 0 0 0; color: #856404; font-size: 11px;">Sisa pembayaran dapat dilunasi saat check-in</p>
+                </div>
+            <?php else: ?>
+                <div style="background-color: #d4edda; padding: 10px; border-radius: 5px; margin: 10px 0; border-left: 4px solid #28a745;">
+                    <p style="margin: 0; color: #155724;"><strong>✓ PEMBAYARAN LUNAS</strong></p>
+                    <p style="margin: 5px 0 0 0; color: #155724; font-size: 11px;">Terima kasih! Pembayaran telah diterima dengan lengkap</p>
+                </div>
+            <?php endif; ?>
+
             <hr>
             <p>Dicetak pada: <?php echo date('d F Y H:i') ?></p>
             <p>Terima kasih telah memilih layanan kami!</p>

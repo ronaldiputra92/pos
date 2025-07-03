@@ -58,7 +58,12 @@ class Auth extends CI_Controller
                     redirect('dashboard');
                 } else {
                     $this->_user_log();
-                    redirect('penjualan');
+                    // Redirect customer ke halaman booking, user lain ke penjualan
+                    if ($user['username'] == 'customer') {
+                        redirect('booking');
+                    } else {
+                        redirect('penjualan');
+                    }
                 }
             } else {
                 $this->session->set_flashdata('message', '<div class="alert alert-danger alert-dismissible fade in" role="alert"> <b>Error :</b> Password Salah. </div>');
